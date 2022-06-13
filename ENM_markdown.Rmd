@@ -1,0 +1,689 @@
+---
+title: "Current and Future Projections for Eurosian Lynx (*Lynx Lynx*)"
+author: "**Tolunay TABAK**, 090150036"
+date: "29 January, 2022"
+output:
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+---
+<style>
+body{
+text-align: justify
+}
+</style>
+
+
+# Introduction
+
+The Eurasian lynx is a species found in many regions such as Europe, the Caucasus, Asia, and the USA. The Eurasian lynx, whose scientific name is *lynx lynx*, is a member of the Felidae (cats) family. There are 4 different members of the genus lynx, Eurasian lynx (*lynx lynx*), Canada lynx (*lynx canadensis*), Iberian lynx (*lynx pardinus*), bobcat (*lynx rufus*). In addition, the lynx lynx species has 6 subspecies: *lynx lynx lynx*, *lynx lynx carpathicus*, *lynx lynx balcanicus*, *lynx lynx isabellinus*, *lynx lynx dinniki*, *lynx lynx wrangeli*.A picture and some information of the Eurasian lynx, the largest of the lynx species, is shown in figure 1. ^[1](https://www.wildcatfamily.com/lynx-lineage/ "wildcatfamily.com")^
+
+
+```{r, echo=FALSE, out.width='100%', fig.align='center', fig.cap='**Figure 1:** A picture of an Eurasian lynx taken in a snowy environment and some basic informations are shown.^[1](https://www.wildcatfamily.com/lynx-lineage/ "wildcatfamily.com")^'}
+knitr::include_graphics('https://www.wildcatfamily.com/wp-content/uploads/2019/09/Eurasian-Lynx-Slide-JPG-v2.jpg')
+```
+
+As indicated in Figure 1, the status of the Eurasian lynx is indicated as least concern based on the website of the International Union for Conservation of Nature's (IUCN) threatened species red list, although some other organizations describe it as endangered^[3](https://www.iucnredlist.org/species/12519/121707666#geographic-range "IUCN Redlist Website")^. The evaluations of regional organizations should also be taken into account, as they are likely to be regionally endangered as they spread over a wide area.In addition to the distribution map of the species on the IUCN site, distribution map data can also be downloaded as a shape file, thus providing a suitable resource for use in ecological niche modeling studies. The Global Biodiversity Advisory Facility (GBIF) provides researchers with the occurrence data, another important type of data for ENMs, with their coordinates. In order to make the occurrence data from GBIF meaningful according to the lineages, since there is no direct genomic study and there is no DNA data, they are differentiated according to the countries where clades were detected in previous studies, using the literature. Based on this information, firstly, occurrence data of lynx lynx species were obtained from the GBIF site and distribution range data from the IUCN site. Then, starting from the clade information taken from the article "Mitogenome Phylogeny Including Data from Additional Subspecies Provides New Insights into the Historical Biogeography of the Eurasian lynx (*Lynx lynx*) published by Deniz Mengüllüoğlu et al., and the occurrence data of subspecies from GBIF, A map was prepared using R. Lineage information of the lynx lynx species from the article is as shown in figure 2.
+
+```{r Clades_figure, echo=FALSE, fig.align='center', out.width='75%', fig.cap='**Figure 2:** Three different main lineages of *lynx lynx* from past to present are shown. Also, clade b and clade c are also divided into clades within themselves.^[2](https://www.researchgate.net/publication/353741006_Mitogenome_Phylogeny_Including_Data_from_Additional_Subspecies_Provides_New_Insights_into_the_Historical_Biogeography_of_the_Eurasian_lynx_Lynx_lynx "(Mengüllüoğlu et al., 2021)")^' }
+knitr::include_graphics('https://www.researchgate.net/profile/Huseyin-Ambarli/publication/353741006/figure/fig2/AS:1053856519692290@1628270382814/Bayesian-phylogenetic-tree-of-L-lynx-mitogenome-sequences-Posterior-node-support-is.png')
+```
+
+Although there is countryCode information in the data sets obtained from GBIF, since there is no genetic lineage information, the information of the countries and subspecies of the clades in this article which are shown in the figure 3 was used.
+
+```{r Clades_table, echo=FALSE, fig.align='center', out.width='75%', fig.cap='**Figure 3:** Properties of the lineages of the lynx lynx species is shown. ^[2](https://www.researchgate.net/publication/353741006_Mitogenome_Phylogeny_Including_Data_from_Additional_Subspecies_Provides_New_Insights_into_the_Historical_Biogeography_of_the_Eurasian_lynx_Lynx_lynx "(Mengüllüoğlu et al., 2021)")^' }
+
+knitr::include_graphics('C:/Users/tolun/Desktop/ENM/data/table1.PNG')
+
+```
+
+In this study, the aim is to observe the differences between a single clade and all data as a result of two different projections using the occurrence data of all clades and only the occurrence data of clade b. For this purpose, projections were made for these two different experimental lines using current and future bioclimatic data. Later, these projections were arranged as a range change map.
+
+# Methods
+
+In this project, current and future ecological niche models were prepared for the Eurasian lynx (*lynx lynx*) using the R Studio application. These projections were made using the BIOMOD2 package.
+
+## Data collection and processing
+
+The project started with the collection of the necessary occurrence and distribution map data, and these data were obtained from the websites of IUCN and GBIF organizations. Occurrence data from GBIF is excel files with .csv extension, while distribution map data from IUCN is shape file with .shp extension. No processing has been done for the distribution map data, it is already used as a reference. Some arrangements have been made for the occurrence data, the data has been framed and cleaned. Then, data were prepared based on country codes for 3 different clades, and a collective data of all clades was also prepared.
+
+```{r occurrence_data_cleaning, include=FALSE, paged.print=TRUE}
+
+setwd("C:/Users/tolun/Desktop/ENM/")
+getwd()
+
+##Library installation
+#install.packages("tibble")
+#install.packages("dplyr")
+#install.packages("biomod2")
+#install.packages("rasterVis")
+#install.packages("gridExtra")
+
+##Library loading
+library("dplyr")
+library("rgdal")
+library("ggplot2")
+library("rnaturalearth")
+library("tibble")
+library("readr")
+library("biomod2")
+library("rasterVis")
+library("gridExtra")
+
+# Data Set
+gbif_lynx <- read.delim("data/gbif/0075557-210914110416597.csv")
+iucn_map_lynx <- readOGR("data/iucn/data_0.shp")
+
+# Data Cleaning
+gbif_lynx<- select(gbif_lynx, c("countryCode", "decimalLatitude", "decimalLongitude"))
+
+gbif_lynx <- filter(gbif_lynx, +
+                      decimalLatitude != is.na(1), +
+                      decimalLongitude!= is.na(1))
+                    
+
+
+#  Clade naming 
+## Clade A: CN
+## Clade B: TR, ME, RS, MK
+## Clade C: PL, LV, RV, SK, RO, NO, MN, CH
+
+# Clade A
+cn_data <- filter(gbif_lynx, countryCode == c("CN")) # 5 obs.
+
+clade_a_data <- cn_data
+
+clade_a_data <- clade_a_data %>%
+  add_column(lineage = c("clade_a"))
+head(clade_a_data)
+
+# Clade B
+
+tr_data <- filter(gbif_lynx, countryCode == c("TR")) # 1 obs.
+#me_data <- filter(gbif_lynx, countryCode == c("ME")) # 0 obs.
+rs_data <- filter(gbif_lynx, countryCode == c("RS")) # 2 obs.
+
+clade_b_data <- full_join(tr_data, rs_data)
+
+clade_b_data <- clade_b_data %>%
+  add_column(lineage = c("clade_b"))
+head(clade_b_data)
+
+
+# Clade C
+
+no_data <- filter(gbif_lynx, countryCode == c("NO"))  #25813 obs.
+new_no_data <- sample_n(no_data, 200, replace = FALSE) 
+
+ch_data <- filter(gbif_lynx, countryCode == c("CH"))  #29602 obs.
+new_ch_data <- sample_n(ch_data, 75, replace = FALSE)
+
+pl_data <- filter(gbif_lynx, countryCode == c("PL"))  #48 obs.
+new_pl_data <- sample_n(pl_data, 7, replace = FALSE)
+
+ro_data <- filter(gbif_lynx, countryCode == c("RO"))  #02 obs.
+new_ro_data <- sample_n(ro_data, 1, replace = FALSE)
+
+ru_data <- filter(gbif_lynx, countryCode == c("RU"))  #49 obs.
+new_ru_data <- sample_n(ru_data, 7, replace = FALSE)
+
+#lv_data <- filter(gbif_lynx, countryCode == c("LV")) #00 obs.
+#new_lv_data <- sample_n(lv_data, 50, replace = FALSE)
+
+sk_data <- filter(gbif_lynx, countryCode == c("SK"))  #12 obs.
+new_sk_data <- sample_n(sk_data, 2, replace = FALSE)
+
+mn_data <- filter(gbif_lynx, countryCode == c("MN"))  #07 obs.
+new_mn_data <- sample_n(mn_data, 1, replace = FALSE)
+
+
+#### Clade C Lineage Data 
+
+clade_c_data <- full_join(new_no_data, new_ch_data)
+clade_c_data <- full_join(clade_c_data, pl_data)
+clade_c_data <- full_join(clade_c_data, ro_data)
+clade_c_data <- full_join(clade_c_data, ru_data)
+clade_c_data <- full_join(clade_c_data, sk_data)
+clade_c_data <- full_join(clade_c_data, mn_data)
+
+clade_c_data <- clade_c_data %>%
+  add_column(lineage = c("clade_c"))
+head(clade_c_data)
+
+# Data frame of all clades 
+
+clades_data <- full_join(clade_a_data, clade_b_data)
+clades_data <- full_join(clades_data, clade_c_data)
+
+clades_data <- clades_data %>%
+  add_column(occurrenceStatus = c(1))
+head(clades_data)
+
+clade_b_data <- clade_b_data %>%
+  add_column(occurrenceStatus = c(1))
+head(clade_b_data)
+
+
+```
+
+The distribution map of all clades was plotted using the clean and marked occurrence data according to the lineages obtained after the data processing and the same process was repeated only for the data belonging to clade b. 
+After the distribution maps for all clades and clade b were prepared, bioclimatic data for current and future projections were collected and processed. Bioclimatic current and future data are taken from worldclim's website and future data is MIROC-6 data of SSP370 scenario. Among these bioclimatic data from bio1 to bio19; bio1, bio6, bio11, and bio15 were used.
+
+```{r bioclim_data_stacking, include=FALSE}
+
+# WorldClim Current Data
+
+library(raster)
+
+bioclim_data <- raster :: stack (
+  c(
+    bio1='data/wc2.1_5m_bio_1.tif',
+    bio6='data/wc2.1_5m_bio_6.tif',
+    bio11='data/wc2.1_5m_bio_11.tif',
+    bio15='data/wc2.1_5m_bio_15.tif'
+  )
+)
+
+# WorldClim Future Data
+
+bioclim_future <- raster::stack("data/share/spatial03/worldclim/cmip6/7_fut/5m/MIROC6/ssp370/wc2.1_5m_bioc_MIROC6_ssp370_2081-2100.tif")
+
+bio1_f <- subset(bioclim_future, "wc2.1_5m_bioc_MIROC6_ssp370_2081.2100.1")
+bio6_f <- subset(bioclim_future, "wc2.1_5m_bioc_MIROC6_ssp370_2081.2100.6")
+bio11_f <- subset(bioclim_future, "wc2.1_5m_bioc_MIROC6_ssp370_2081.2100.11")
+bio15_f <- subset(bioclim_future, "wc2.1_5m_bioc_MIROC6_ssp370_2081.2100.15")
+
+bioclim_future_data <- stack(bio1_f, bio6_f, bio11_f, bio15_f)
+
+names(bioclim_future_data)[names(bioclim_future_data) == 'wc2.1_5m_bioc_MIROC6_ssp370_2081.2100.1'] <- "bio1"
+names(bioclim_future_data)[names(bioclim_future_data) == 'wc2.1_5m_bioc_MIROC6_ssp370_2081.2100.6'] <- "bio6"
+names(bioclim_future_data)[names(bioclim_future_data) == 'wc2.1_5m_bioc_MIROC6_ssp370_2081.2100.11'] <- "bio11"
+names(bioclim_future_data)[names(bioclim_future_data) == 'wc2.1_5m_bioc_MIROC6_ssp370_2081.2100.15'] <- "bio15"
+
+```
+
+## Projections
+
+After the necessary data were obtained, these data were formatted, modeled, ensembled, and finally projected with the codes written using the biomod2 package. Separate current and future range change projections were made for the data of all clades and data of clade b. In order to obtain these projections, first of all, GLM and GAM models and TSS and ROC binary methods were tested on the data of all clades. Model score evaluations were made for the models obtained and no significant difference was observed. However, GAM modeling and TSS binary method did not work due to few occurrence data while repeating the same operations with clade b, so all projections were made using GLM and ROC.
+
+```{r lynx_formating_modelling, include=FALSE}
+
+#Data Formating for Entire Lynx Lynx
+
+lynx_data <- BIOMOD_FormatingData(
+  resp.var = clades_data$occurrenceStatus,
+  expl.var = bioclim_data,
+  resp.xy = clades_data[, c("decimalLongitude", "decimalLatitude")],
+  resp.name = "Lynx.lynx",
+  PA.nb.rep = 1,
+  PA.nb.absences = 500,
+  PA.strategy = 'random',
+  na.rm=TRUE
+) 
+
+# Modeling for Entire Lynx Lynx
+
+lynx_opt <- BIOMOD_ModelingOptions(
+  GLM = list(type='quadratic', interaction.level=1),
+  GAM = list(algo ='GAM_mgcv')
+)
+
+lynx_models <- BIOMOD_Modeling(
+  data = lynx_data,
+  models = c("GLM","GAM"),
+  models.options = lynx_opt,
+  NbRunEval = 1,
+  DataSplit = 80,
+  VarImport = 3,
+  do.full.models = FALSE,
+  modeling.id = "demo1",
+)
+
+lynx_models_scores <- get_evaluations(lynx_models)
+
+dim(lynx_models_scores)
+dimnames(lynx_models_scores)
+
+# Model Score Graph for Entire Lynx Lynx
+
+models_scores_graph(
+  lynx_models,
+  by ="models",
+  metrics = c("ROC", "TSS"),
+  xlim = c(0.5,1), 
+  ylim = c(0.5,1)
+)
+
+models_scores_graph(
+  lynx_models,
+  by ="data_set",
+  metrics = c("ROC", "TSS"),
+  xlim = c(0.5,1), 
+  ylim = c(0.5,1)
+)
+```
+
+```{r clade_b_formating_modelling, include=FALSE}
+#Data Formating for Clade B of Lynx Lynx
+
+clade_b_biomod <- BIOMOD_FormatingData(
+  resp.var = clade_b_data$occurrenceStatus,
+  expl.var = bioclim_data,
+  resp.xy = clade_b_data[, c("decimalLongitude", "decimalLatitude")],
+  resp.name = "clade_b",
+  PA.nb.rep = 1,
+  PA.nb.absences = 5,
+  PA.strategy = 'random',
+  na.rm= TRUE
+) 
+
+
+# Modelling
+
+clade_b_models <- BIOMOD_Modeling(
+  data = clade_b_biomod,
+  models = c("GLM"),
+  NbRunEval = 1,
+  DataSplit = 80,
+  VarImport = 3,
+  do.full.models = 'TRUE',
+  modeling.id = 'demo2',
+  Prevalence = 0.5,
+  models.eval.meth = 'ROC', 
+  SaveObj = TRUE,
+  rescal.all.models = TRUE
+)
+
+# Ensemble Models for Clade B
+
+clade_b_ensemble_models <- BIOMOD_EnsembleModeling(
+  modeling.output = clade_b_models,
+  em.by = 'all',
+  eval.metric = 'ROC',
+  eval.metric.quality.threshold = NULL,
+  models.eval.meth = c('ROC'),
+  prob.mean = FALSE,
+  prob.cv = TRUE,
+  committee.averaging = TRUE, 
+  prob.mean.weight = TRUE,
+  VarImport = 0
+)
+
+```
+
+```{r lynx_model_evaluation_response_plot, include=FALSE}
+
+# Model scores 
+
+(lynx_models_var_import <- get_variables_importance(lynx_models))
+apply(lynx_models_var_import, c(1, 2), mean)
+
+lynx_glm <- BIOMOD_LoadModels(lynx_models, models = 'GLM')
+lynx_gam <- BIOMOD_LoadModels(lynx_models, models = 'GAM')
+
+# Response Plots
+
+glm_eval_strip <- biomod2::response.plot2(
+  models = lynx_glm,
+  Data = get_formal_data(lynx_models, 'expl.var'),
+  show.variables = get_formal_data(lynx_models, 'expl.var.names'),
+  do.bivariate = FALSE,
+  fixed.var.metric = 'median',
+  legend = FALSE,
+  display_title = FALSE,
+  data_species =get_formal_data(lynx_models, 'resp.var')
+)
+
+
+gam_eval_strip <- biomod2::response.plot2(
+  models = lynx_gam,
+  Data = get_formal_data(lynx_models, 'expl.var'),
+  show.variables = get_formal_data(lynx_models, 'expl.var.names'),
+  do.bivariate = FALSE,
+  fixed.var.metric = 'median',
+  legend = FALSE,
+  display_title = FALSE,
+  data_species =get_formal_data(lynx_models, 'resp.var')
+)
+
+```
+
+```{r lynx_current_projection, include=FALSE}
+## Current Projection for Entire Lynx Lynx
+
+# Ensemble Models for Entire Lynx Lynx
+
+lynx_ensemble_models <- BIOMOD_EnsembleModeling(
+  modeling.output = lynx_models,
+  em.by = 'all',
+  eval.metric = 'ROC',
+  eval.metric.quality.threshold = 0.8,
+  models.eval.meth = c('ROC'),
+  prob.mean = FALSE,
+  prob.cv = TRUE,
+  committee.averaging = TRUE, 
+  prob.mean.weight = TRUE,
+  VarImport = 0
+)
+
+
+(lynx_ensemble_models_scores <- get_evaluations(lynx_ensemble_models))
+
+# Projection of Models for Entire Lynx Lynx
+
+lynx_models_project_current <- BIOMOD_Projection(
+  modeling.output = lynx_models,
+  new.env = bioclim_data,
+  proj.name = "current",
+  binary.meth = 'ROC',
+  output_format = ".grd",
+  do.stack = FALSE
+)
+
+
+lynx_ensemble_models_current <- BIOMOD_EnsembleForecasting(
+  EM.output = lynx_ensemble_models,
+  projection.output = lynx_models_project_current,
+  binary.meth = 'ROC',
+  output_format = ".grd",
+  do.stack = FALSE
+)
+
+```
+
+```{r clade_b_current_projection, include=FALSE}
+
+# Clade B Projection (Current) 
+
+clade_b_proj_current <- BIOMOD_Projection(
+  modeling.output = clade_b_models,
+  new.env = bioclim_data,
+  proj.name = "current",
+  binary.meth = 'ROC',
+  output_format = ".grd",
+  do.stack = FALSE
+)
+
+clade_b_ensemble_models_current <- BIOMOD_EnsembleForecasting(
+  EM.output = clade_b_ensemble_models,
+  projection.output = clade_b_proj_current,
+  binary.meth = 'ROC',
+  output_format = ".grd",
+  do.stack = FALSE
+)
+```
+
+```{r lynx_future_projection, include=FALSE}
+
+## Future Projection for Entire Lynx Lynx
+
+lynx_models_project_2081 <- BIOMOD_Projection(
+  modeling.output = lynx_models,
+  new.env = bioclim_future_data,
+  proj.name = "future",
+  binary.meth = 'ROC',
+  output_format = '.grd',
+  do.stack = FALSE
+)
+
+lynx_ensemble_models_2081 <- BIOMOD_EnsembleForecasting(
+  EM.output = lynx_ensemble_models,
+  projection.output = lynx_models_project_2081,
+  binary.meth = 'ROC',
+  output_format = '.grd',
+  do.stack = FALSE
+)
+
+```
+
+```{r clade_b_future_projection, include=FALSE}
+
+# Clade B Future Projections 
+
+clade_b_models_project_2081 <- BIOMOD_Projection(
+  modeling.output = clade_b_models,
+  new.env = bioclim_future_data,
+  proj.name = "future",
+  binary.meth = 'ROC',
+  output_format = ".grd",
+  do.stack = FALSE
+)
+
+clade_b_ensemble_models_2081 <- BIOMOD_EnsembleForecasting(
+  EM.output = clade_b_ensemble_models,
+  projection.output = clade_b_models_project_2081,
+  binary.meth = 'ROC',
+  output_format = ".grd",
+  do.stack = FALSE
+)
+
+```
+## Range Change Mapping
+
+After the projections were completed, the merged binary data was obtained by making ensemble forecasting of the projection data obtained. Range change maps were created using the merged ROC binary data obtained.
+
+```{r lynx_bin_mapping, include=FALSE}
+
+# Range Change Map (SRC MAP) for Entire Lynx
+
+lynx_bin_proj_current <- stack(
+  c(
+    CaByROC = "Lynx.lynx/proj_current/individual_projections/Lynx.lynx_EMcaByROC_mergedAlgo_mergedRun_mergedData_ROCbin.grd",
+    WmeanByROC = "Lynx.lynx/proj_current/individual_projections/Lynx.lynx_EMwmeanByROC_mergedAlgo_mergedRun_mergedData_ROCbin.grd"
+    )
+  )
+
+
+lynx_bin_proj_future <- stack(
+  c(
+    CaByROC = "Lynx.lynx/proj_future/individual_projections/Lynx.lynx_EMcaByROC_mergedAlgo_mergedRun_mergedData_ROCbin.grd",
+    WmeanByROC = "Lynx.lynx/proj_future/individual_projections/Lynx.lynx_EMwmeanByROC_mergedAlgo_mergedRun_mergedData_ROCbin.grd"
+  )
+)
+
+SRC_lynx_current_2081_ssp370 <- BIOMOD_RangeSize(
+  lynx_bin_proj_current, 
+  lynx_bin_proj_future
+)
+
+SRC_lynx_current_2081_ssp370$Compt.By.Models
+
+lynx_SRC_map <- stack(SRC_lynx_current_2081_ssp370$Diff.By.Pixel)
+
+```
+
+```{r clade_b_bin_mapping, include=FALSE}
+
+# Clade B Binary Data Stack
+
+clade_b_bin_proj_current <- stack(
+  c(
+    CaByROC = "clade.b/proj_current/individual_projections/Clade.b_EMcaByROC_mergedAlgo_mergedRun_mergedData_ROCbin.grd",
+    WmeanByROC = "clade.b/proj_current/individual_projections/Clade.b_EMwmeanByROC_mergedAlgo_mergedRun_mergedData_ROCbin.grd"
+  )
+)
+
+
+clade_b_bin_proj_future <- stack(
+  c(
+    CaByROC = "clade.b/proj_future/individual_projections/Clade.b_EMcaByROC_mergedAlgo_mergedRun_mergedData_ROCbin.grd",
+    WmeanByROC = "clade.b/proj_future/individual_projections/Clade.b_EMwmeanByROC_mergedAlgo_mergedRun_mergedData_ROCbin.grd"
+  )
+)
+
+# Clade B Mapping
+
+SRC_clade_b_current_2081_ssp370 <- BIOMOD_RangeSize(
+  clade_b_bin_proj_current, 
+  clade_b_bin_proj_future
+)
+
+SRC_clade_b_current_2081_ssp370$Compt.By.Models
+
+clade_b_SRC_map <- stack(SRC_clade_b_current_2081_ssp370$Diff.By.Pixel)
+
+```
+
+
+# Results
+
+In this project, firstly, the occurrence data of Eurasian lynx was taken from GBIF and distribution map from IUCN, these data were processed and made usable. Then, SSP370 bioclimatic data of 2081-2100 period MIROC6 Global Climate Model (GCM) with 5 minutes spatial resolution were taken from WorldClim. After obtaining the data according to the lineages, the distribution map of all clades was plotted using the clean and marked occurrence data obtained after the data processing and it is shown in figure 4.
+
+```{r land50_coast50, include=FALSE}
+
+# Base Map downloading
+Land50 <- ne_download(scale = 50, type = "land", category = "physical")
+Coast50 <- ne_download(scale = 50, type = "coastline", category = "physical")
+```
+
+```{r lynx_distribution_map, echo=FALSE, fig.align='center', fig.cap='**Figure 4:** Distribution map of all *lynx lynx* clades prepared using GBIF occurrence and IUCN distribution data.', message=FALSE}
+#Plotting the graph
+
+ggplot()+
+  aes(x = Longitude,
+      y = Latitude) + 
+  geom_polygon(data = Land50, aes(x=long, y=lat, group=group), fill="#BC9354") +
+  geom_polygon(data = iucn_map_lynx,aes(x=long, y=lat, group=group), fill="orange") +
+  geom_point(data = clades_data, aes(x=decimalLongitude, y=decimalLatitude, fill= lineage), shape=21, size=2)+
+  theme(panel.background = element_rect(fill="#2C8598"), element_line(color ="#2C8598")) +
+  coord_fixed(xlim = c(0,155), ylim= c(35,70), 1.3)#for the cutting the map
+
+```
+Then, the same process was repeated only for the data belonging to clade b, and the obtained clade b distribution map is shown in figure 5.
+
+```{r clade_b_distribution_map, echo=FALSE, fig.align='center', fig.cap='**Figure 5:** Distribution map of clade b of *lynx lynx* prepared using GBIF occurrence and IUCN distribution data.', message=FALSE}
+
+#Plotting the graph
+
+ggplot()+
+  aes(x = Longitude,
+      y = Latitude) + 
+  geom_polygon(data = Land50, aes(x=long, y=lat, group=group), fill="#BC9354") +
+  geom_polygon(data = iucn_map_lynx,aes(x=long, y=lat, group=group), fill="orange") +
+  geom_point(data = clade_b_data, aes(x=decimalLongitude, y=decimalLatitude, fill= lineage), shape=21, size=2)+
+  theme(panel.background = element_rect(fill="#2C8598"), element_line(color ="#2C8598")) +
+  coord_fixed(xlim = c(15,50), ylim= c(35,50), 1.3)#for the cutting the map
+
+```
+
+## Current Projections
+
+Then, using the biomod2 package, the current projections are formed using the current bioclimatic data for two different modeling lines prepared using the data of all clades and only the data of clade b were as shown in figure 6 and 7.
+
+```{r lynx_current_projection_plot, fig.align='center', fig.cap= '**Figure 6:** The current projection prepared for the data of all clades is shown. They are prepared with CA(Committe Averaging) and Wmean(Weighted Mean) calculations obtained by ROC binary method.', message=FALSE, echo=FALSE}
+
+plot(lynx_ensemble_models_current, str.grep= "EMca|EMwmean")
+
+```
+
+```{r clade_b_current_projection_plot, fig.align='center', fig.cap= '**Figure 7:** The current projection prepared for the data of clade b is shown.', message=FALSE, echo=FALSE}
+
+plot(clade_b_ensemble_models_current, str.grep= "EMca|EMwmean")
+
+```
+
+## Future Projections 
+
+After the current projections, the future projections are formed using the future(2081-2100) SSP370 by MIROC6 bioclimatic data for two different modeling lines prepared using the data of all clades and only the data of clade b were as shown in figure 8 and 9.
+
+```{r lynx_future_projection_plot, fig.align='center', fig.cap='**Figure 8:** The future(2081-2100) projection prepared for the data of all clades is shown.', message=FALSE, echo=FALSE}
+
+plot(lynx_ensemble_models_2081, str.grep= "EMca|EMwmean")
+
+```
+
+```{r clade_b_future_projection_plot, fig.align='center', fig.cap='**Figure 9:** The future(2081-2100) projection prepared for the data of clade b is shown.', message=FALSE, echo=FALSE}
+
+plot(clade_b_ensemble_models_2081, str.grep= "EMca|EMwmean")
+
+```
+
+## Range Change Maps 
+
+By combining the data obtained from the prepared current and future projections, range change maps were prepared, and the map obtained from all clade data was created as shown in figure 10, and the map obtained from clade b data as shown in figure 11.
+
+```{r lynx_SRCmap, fig.align='center', fig.cap='**Figure 10:** On the map showing the range change, prepared using the merged current and future ROC binary data of all clades, the ranges that are predicted to be lost in the future are shown in red, and the rangs that are predicted to be won in the new future are shown in green. In addition, presence and absence data are also expressed with colors.', message=FALSE, echo=FALSE}
+
+plot(lynx_SRC_map)
+
+my.at <- seq(-2.5, 1.5, 1)
+my.Colorkey <- list(
+  at = my.at,
+  labels =
+    list(
+      labels = c("lost", "presence", "absence", "gain"),
+      at = my.at[-1]-0.5
+    )
+)
+
+rasterVis::levelplot(
+  lynx_SRC_map,
+  main = "Lynx Lynx Range Change",
+  colorkey = my.Colorkey,
+  col.regions = c('#f03b20', '#99d8c9', '#f0f0f0', '#2ca25f'),
+  layout = c(2,1),
+  dpi = 600,
+)
+```
+
+
+```{r clade_b_SRCmap, fig.align='center', fig.cap='**Figure 11:** On the map showing the range change, prepared using the merged current and future ROC binary data of only clade b, the ranges that are predicted to be lost in the future are shown in red, and the rangs that are predicted to be won in the new future are shown in green. In addition, presence and absence data are also expressed with colors.', message=FALSE, echo=FALSE}
+
+plot(clade_b_SRC_map)
+
+my.at <- seq(-2.5, 1.5, 1)
+my.Colorkey <- list(
+  at = my.at,
+  labels =
+    list(
+      labels = c("lost", "presence", "absence", "gain"),
+      at = my.at[-1]-0.5
+    )
+)
+
+rasterVis::levelplot(
+  clade_b_SRC_map,
+  main = "Clade B Range Change",
+  colorkey = my.Colorkey,
+  col.regions = c('#f03b20', '#99d8c9', '#f0f0f0', '#2ca25f'),
+  layout = c(2,1),
+  dpi = 600,
+)
+
+```
+
+In addition, for better numerical expression of range changes, the data on the background of these range change maps are given in tables 1 and 2.
+
+```{r table- Range Change1, echo=FALSE, message=FALSE, warning=FALSE}
+knitr::kable(SRC_lynx_current_2081_ssp370$Compt.By.Models, caption = '**Table 1:** Range change map data of all clades')
+```
+
+```{r table- Range Change2, echo=FALSE, message=FALSE, warning=FALSE}
+knitr::kable(SRC_clade_b_current_2081_ssp370$Compt.By.Models, caption = '**Table 2:** Range change map data of clade b')
+```
+
+# Discussion
+
+In this project, which is intended to be compared by making current and future projections for the Eurasian lynx, the projections are also run using only clade b data. With this application, it is desired to observe the changes that will occur in the projection. And yet at the implementation stage, this situation caused problems because the GAM model and TSS binary method behaved incorrectly due to the scarcity of occurrence data of clade b. Due to this error, it was decided to use the GLM model, as there was not much difference between the GAM and GLM model score evaluations as shown in Table 3.
+
+```{r tables-Model score evaluations, echo=FALSE, message=FALSE, warning=FALSE}
+
+knitr::kable(lynx_models_var_import, caption = '**Tablo 3:** Score evaluations of GLM and GAM models are shown.')
+
+```
+Then, the current projections shown in figures 6 and 7 were prepared. The prepared projections again clearly showed that the error rate is higher in the projection prepared with clade b data. This is because when modeling with GLM, GLM adds presence and absence data when it deems necessary. Since the occurrence data of clade b is also very low, almost all the presence and absence data in the projection are produced in GLM modeling. A similar situation is observed when looking at the future projections shown in Figures 8 and 9. Contrary to expectations, in the future projection prepared using only clade b data, the distribution of the species did not decrease and even increased visibly. These visually show that it is not correct to make a prediction about the whole species using the data of a single lineage. In addition, there are distributions obtained by using two different calculations (Ca and Wmean) in these projections. When the projections obtained from these calculations are compared, it can be interpreted that the transitions are softer and the distribution is more realistic in the projection obtained by the Wmean calculation. This situation can be explained as follows, it does not make much sense to draw a line somewhere and say that Eurasian lynx can live on one side of this line and cannot live on the other. Therefore, a gradient is expected at the boundary between habitable and uninhabitable zones.
+When the range change maps shown in Figures 10 and 11 are examined, it is seen that the errors caused by the conspicuous clade b data are less noticeable when plotted with this method then the separately analysis of current and future projections. However, it is seen that there are inconsistencies in the map obtained from the clade b data. When the background data of the maps in Tables 1 and 2 are examined for the full diagnosis of this inconsistency, it is clearly seen that while the range loss and gain values are in balance in the projection made with all clade data, the range gain value is more than twice the range loss value in the projection made with the clade b data. This clearly shows that the accuracy of the projections prepared with single clade data, especially clade data with less occurrence data, is very low.
+In addition, when looking at the range change maps, especially the map prepared using all clade data, it is seen that in the future (2081-2100) Eurasian lynx populations in the northern hemisphere leave the warming habitats and there is a range shift towards the more northern regions, as expected. Since the projections are prepared by using the MIROC6 GCM and the SSP370(2081-2100) scenario, it is normal for the range loss and gain values to be in balance, because the SSP370 scenario is a moderate scenario. This may change with the realization of more optimistic or pessimistic scenarios. However, according to this scenario, the Eurasian lynx population maintains its total range value. Of course, it should be noted that projections do not include all variables. As Kıraç A. mentioned in this project, the climatic data that are expected to have the most impact on the lynx lynx species are bio1 (annual mean temperature), bio6 (min. temperature of coldest month), bio11 (mean temperature of coldest quarter), and bio15( precipitation seasonality (coefficient of variation)) was used. ^[4](https://www.researchgate.net/publication/350955684_Potential_distribution_of_two_lynx_species_in_europe_under_paleoclimatological_scenarios_and_anthropogenic_climate_change_scenarios "Kıraç, 2021")^ ^[5](https://www.worldclim.org/data/bioclim.html "WorldClim Variables")^
+
+In conclusion, projections have shown that Eurasian lynxes will experience a range shift in the period 2081-2100 as a result of climate change. However, it is estimated that they will succeed in preserving their total range. In this case, their risk of extinction is low according to the data obtained from these projections. However, since these projections are made superficially and without genetic data, they will not yield definitive results. However, it can be clearly stated that it is a big mistake to use data obtained from only one clade of that species while making future projections for a species.
+
+
+# References
+
+* **[1]** Eurasian Lynx (Lynx lynx) Classification / Taxonomy and Chart. (2021, November 23). Retrieved December 24, 2021, from https://www.wildcatfamily.com/lynx-lineage/eurasian-lynx-lynx-lynx/
+* **[2]** Mengüllüoğlu, D., Ambarlı, H., Barlow, A., Paijmans, J. L. A., Sayar, A. O., Emir, H., … Förster, D. W. (2021). Mitogenome Phylogeny Including Data from Additional Subspecies Provides New Insights into the Historical Biogeography of the Eurasian lynx Lynx lynx. Genes, 12(8), 1216. doi:10.3390/genes12081216
+* **[3]** Breitenmoser, U., Breitenmoser-Würsten, C., Lanz, T., von Arx, M., Antonevich, A., Bao, W. & Avgan, B. 2015. Lynx lynx (errata version published in 2017). The IUCN Red List of Threatened Species 2015: e.T12519A121707666. Accessed on 24 December 2021.
+* **[4]** Kıraç, Akın. (2021). Potential distribution of two lynx species in europe under paleoclimatological scenarios and anthropogenic climate change scenarios. CERNE. 27. 10.1590/01047760202127012517. 
+* **[5]** WorldClim. (n.d.). Retrieved January 29, 2022, from https://www.worldclim.org/data/bioclim.html 
