@@ -1,4 +1,5 @@
-*In this project, ecological niche modeling was carried out for the lynx lynx species using R programming and fundamentally biomod2 package. 
-*The current and future distribution projections of the species are included in the modeling. 
-*Occurrence data of the species were obtained from GBIF website, distribution map from IUCN website, and current and future bioclimatic data from Worldclim's website. 
-*Data could not be uploaded due to their large size.
+* In this project, ecological niche modeling was carried out for the lynx lynx species using R programming and fundamentally biomod2 package. 
+* The current and future distribution projections of the species are included in the modelling. 
+* Occurrence data of the species were obtained from GBIF website, distribution map from IUCN website, and current and future bioclimatic data from Worldclim's website. 
+* Data could not be uploaded due to their large size.
+* HTML-knitted version of Rmarkdown codes is also uploaded, so you can download Markdown.html file and check how the completed project looks.
